@@ -3,20 +3,20 @@ import { Config } from "./config";
 import { Context, Logger } from "koishi";
 
 export class Baidumap {
-private _ak:string;
+  private _ak: string;
 
-private _logger: Logger;
+  private _logger: Logger;
 
 
-constructor() {}
-public  init(
+  constructor() { }
+  public init(
     config: Config,
     parentName: string = "nepweather"
   ) {
-    this._logger = new Logger( parentName+"/baidumap");
-    this._ak=config.ak;
+    this._logger = new Logger(parentName + "/baidumap");
+    this._ak = config.ak;
   }
-public async getCoordinate(
+  public async getCoordinate(
     address: string,
     context: Context
   ): Promise<any> {
@@ -34,7 +34,7 @@ public async getCoordinate(
     } catch (e) {
       this._logger.error("Baidumap get coordinate Failed");
       this._logger.error(e);
-      
+
 
       return null;
     }
