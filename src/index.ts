@@ -3,16 +3,19 @@ import { Baidumap } from "./baidumap";
 import { Sunrise } from "./sunrise";
 import { Config } from "./config";
 import { Gamerelease } from './gamerelease';
+import { Dailygame } from './dailygame';
 
 export const name = 'nepweather'
 //export * from "./config";
 export * from "./config";
 export const reactive = true;
-
+const koishi_1 = require("koishi");
 const logger: Logger = new Logger("nepweather");;
 const baidumap: Baidumap = new Baidumap();
 const sunrise: Sunrise = new Sunrise();
 const gamerelease: Gamerelease = new Gamerelease();
+const dailygame: Dailygame = new Dailygame();
+
 export function apply(ctx: Context, config: Config) {
 
   //根据loc查询经纬度
@@ -210,7 +213,7 @@ export function apply(ctx: Context, config: Config) {
           'games': []
         };
         //let games=[];
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 1; i++) {
           let result = await gamerelease.getrelease(platform, i, ctx);
           let flagb = true;
           //logger.info(result);
@@ -248,7 +251,7 @@ export function apply(ctx: Context, config: Config) {
         for (let game of res.games) {
 
           let name = game.name;
-          let releaseDate =  `${new Date(game.release_date).toLocaleDateString("zh-CN", { timeZone: 'Asia/Shanghai' })}  ${new Date(game.release_date).toLocaleTimeString("zh-CN", { timeZone: 'Asia/Shanghai' })}`;
+          let releaseDate = `${new Date(game.release_date).toLocaleDateString("zh-CN", { timeZone: 'Asia/Shanghai' })}`;
           let gameplatform = game.plat_name;
           if (game.other_platforms && game.other_platforms.length > 0) {
             for (let subplatform of game.other_platforms) {
@@ -261,15 +264,14 @@ export function apply(ctx: Context, config: Config) {
           let duzhan = game.is_duzhan == 1 ? '是' : '否';
           let xgp = game.is_xgp == 1 ? '是' : '否';
           let vr = game.is_vr == 1 ? '是' : '否';
-
-          resMsg += `${name}--${releaseDate}  平台:${gameplatform}  支持中文:${cn}  独占:${duzhan}  加入xgp:${xgp}  vr支持:${vr}\n`;
+          resMsg += `《${name}》-${releaseDate}  平台:${gameplatform}  支持中文:${cn}  独占:${duzhan}  加入xgp:${xgp}  vr支持:${vr}\n`;
         }
 
 
 
       }
       catch (e) {
-        resMsg="查询错误";
+        resMsg = "查询错误";
         logger.error("gamerelease 消息解析错误");
         logger.error(e);
 
@@ -280,7 +282,7 @@ export function apply(ctx: Context, config: Config) {
     })
   //查询打折游戏
   ctx.command('gamediscount [platform] <region>', "获取平台部分打折信息")
-    .action(async (_, platform,region) => {
+    .action(async (_, platform, region) => {
 
       const bgamerease = gamerelease.init(config);
 
@@ -337,12 +339,12 @@ export function apply(ctx: Context, config: Config) {
               //如果返回结果小于1个或者返回结果为空则将flag置否以跳出
               if (result.games) {
                 for (let game of result.games) {
-                  let gamedate={
-                    'name':game.name,
-                    'price':game.price,
-                    'originPrice':game.origin_price,
-                    'lowestPrice':game.history_price?game.history_price:'无',
-                    'disEndDate':game.discount_expiration*1000,
+                  let gamedate = {
+                    'name': game.name,
+                    'price': game.price,
+                    'originPrice': game.origin_price,
+                    'lowestPrice': game.history_price ? game.history_price : '无',
+                    'disEndDate': game.discount_expiration * 1000,
                   };
                   res.games.push(gamedate);
                 }
@@ -357,7 +359,7 @@ export function apply(ctx: Context, config: Config) {
           }
           //处理epic折扣接口
 
-          else if (flaga==2) {
+          else if (flaga == 2) {
 
             result = await gamerelease.getdiscountepic(i, ctx);
 
@@ -366,12 +368,12 @@ export function apply(ctx: Context, config: Config) {
               //如果返回结果小于1个或者返回结果为空则将flag置否以跳出
               if (result.items) {
                 for (let game of result.items) {
-                  let gamedate={
-                    'name':game.name,
-                    'price':Number(game.discount_price.replace(/[^0-9.]/ig,"")),
-                    'originPrice':Number(game.price.replace(/[^0-9.]/ig,"")),
-                    'lowestPrice':game.history_lowest_info?game.history_lowest_info.price:'无',
-                    'disEndDate':game.end_date,
+                  let gamedate = {
+                    'name': game.name,
+                    'price': Number(game.discount_price.replace(/[^0-9.]/ig, "")),
+                    'originPrice': Number(game.price.replace(/[^0-9.]/ig, "")),
+                    'lowestPrice': game.history_lowest_info ? game.history_lowest_info.price : '无',
+                    'disEndDate': game.end_date,
                   };
                   res.games.push(gamedate);
                 }
@@ -384,25 +386,29 @@ export function apply(ctx: Context, config: Config) {
               }
             }
           }
-          else if(flaga==3){
-            let regionArg="HK";
-            if(region&&regionArg.toLocaleUpperCase().includes("JP")){
-              regionArg="JP";
+          //处理PS商店折扣接口
+          else if (flaga == 3) {
+            let regionArg = "HK";
+            if (region && (region.toLocaleUpperCase().includes("JP") || region.toLocaleUpperCase().includes("日服"))) {
+              regionArg = "JP";
+              region = "日服";
+            } else {
+              region = "港服";
             }
 
-            result = await gamerelease.getdiscountps(i,regionArg, ctx);
+            result = await gamerelease.getdiscountps(i, regionArg, ctx);
 
             if (result.ret == 0) {
               //至少一条查询成功，将ret置0表示查询成功
               //如果返回结果小于1个或者返回结果为空则将flag置否以跳出
               if (result.items) {
                 for (let game of result.items) {
-                  let gamedate={
-                    'name':game.name,
-                    'price':Number(game.discount_price.split('(')[0].replace(/[^0-9.]/ig,"")),
-                    'originPrice':Number(game.price.replace(/[^0-9.]/ig,"")),
-                    'lowestPrice':game.history_lowest_info?game.history_lowest_info.price:'无',
-                    'disEndDate':game.end_date,
+                  let gamedate = {
+                    'name': game.name,
+                    'price': Number(game.discount_price.split('(')[0].replace(/[^0-9.]/ig, "")),
+                    'originPrice': Number(game.price.replace(/[^0-9.]/ig, "")),
+                    'lowestPrice': game.history_lowest_info ? game.history_lowest_info.price : '无',
+                    'disEndDate': game.end_date,
                   };
                   res.games.push(gamedate);
                 }
@@ -415,7 +421,40 @@ export function apply(ctx: Context, config: Config) {
               }
             }
           }
-          
+          else if (flaga == 4) {
+            let regionArg = "HK";
+            if (region && (region.toLocaleUpperCase().includes("JP") || region.toLocaleUpperCase().includes("日服"))) {
+              regionArg = "JP";
+              region = "日服";
+            } else {
+              region = "港服";
+            }
+
+            result = await gamerelease.getdiscountns(i, regionArg, ctx);
+
+            if (result.ret == 0) {
+              //至少一条查询成功，将ret置0表示查询成功
+              //如果返回结果小于1个或者返回结果为空则将flag置否以跳出
+              if (result.items) {
+                for (let game of result.items) {
+                  let gamedate = {
+                    'name': game.name,
+                    'price': Number(game.discount_price.split('(')[0].replace(/[^0-9.]/ig, "")),
+                    'originPrice': Number(game.price.replace(/[^0-9.]/ig, "")),
+                    'lowestPrice': game.history_lowest_info ? game.history_lowest_info.price : '无',
+                    'disEndDate': game.end_date,
+                  };
+                  res.games.push(gamedate);
+                }
+                if (result.items.length < 1) {
+                  flagb = false;
+                }
+              }
+              else {
+                flagb = false;
+              }
+            }
+          }
           else {
             resMsg += ("分页查询错误，页码：" + (i + 1)) + "\n";
             logger.error(`gamerelease 分页查询错误 page:${i} STATUS:${result.ret}`);
@@ -424,29 +463,37 @@ export function apply(ctx: Context, config: Config) {
             break;
           }
         }
-        resMsg += (platform+"近期打折信息,默认采取人气排序：\n");
-        // if (!flaga) {
-        //   resMsg += "全平台查询由于消息长度原因可能无法展示完全，请分平台进行查询 格式 gamerelease [平台]\n";
-        //   resMsg += "支持的平台 STEAM EPIC Uplay PS5 PS4 NS等\n";
 
-        // }
+        if (flaga == 3) {
+
+          resMsg += `PS商店${region}打折信息,人气排序,货币单位为商店默认货币 \n`;
+
+        }
+        else if (flaga == 4) {
+
+          resMsg += `NS商店${region}打折信息,人气排序,货币单位为商店默认货币 \n`;
+
+        }
+        else {
+          resMsg += (platform + "近期打折信息,人气排序：\n");
+        }
         logger.info(res);
         for (let game of res.games) {
 
           let name = game.name;
-          let enddate = `${new Date(game.disEndDate).toLocaleDateString("zh-CN", { timeZone: 'Asia/Shanghai' })}  ${new Date(game.disEndDate).toLocaleTimeString("zh-CN", { timeZone: 'Asia/Shanghai' })}`;
+          //let enddate = `${new Date(game.disEndDate).toLocaleDateString("zh-CN", { timeZone: 'Asia/Shanghai' })}  ${new Date(game.disEndDate).toLocaleTimeString("zh-CN", { timeZone: 'Asia/Shanghai' })}`;
+          let enddate = `${new Date(game.disEndDate).toLocaleDateString("zh-CN", { timeZone: 'Asia/Shanghai' })}`;
           let price = game.price;
           let originPrice = game.originPrice;
           let lowestPrice = game.lowestPrice;
-
-          resMsg += `${name}--价格:${price}  原价:${originPrice} 折扣:${((1-(price/originPrice))*100).toFixed(0)}%off  史低价:${lowestPrice}   打折结束日期:${enddate}\n`;
+          resMsg += `《${name}》--价格:${price}(${originPrice}) 折扣:${((1 - (price / originPrice)) * 100).toFixed(0)}%off 史低:${lowestPrice} 截至日期:${enddate}\n`;
         }
 
 
 
       }
       catch (e) {
-        resMsg="查询错误";
+        resMsg = "查询错误";
         logger.error("gamediscount 消息解析错误");
         logger.error(e);
 
@@ -455,4 +502,83 @@ export function apply(ctx: Context, config: Config) {
 
 
     })
+
+  //获取游戏新闻
+  ctx.command('gamenews', "获取游戏资讯")
+    .action(async (_) => {
+
+      const bdaily = dailygame.init(config);
+
+      let resMsg: string;
+
+      try {
+        let res = await dailygame.getdailygamenews(ctx);
+
+        if (res.ret == '0'&&res.feeds.length>0) {
+          resMsg = `游戏资讯：\n`
+          for (let news of res.feeds) {            
+            resMsg += `${news.share.title}\n链接：${news.share.url}\n`;
+          }
+        }
+        else {
+          resMsg = "查询错误";
+          logger.error(`dailygamenews 查询错误 STATUSCODE:${res.ret}`);
+
+        }
+
+      }
+      catch (e) {
+        logger.error("dailygamenews 消息解析错误");
+        logger.error(e);
+
+      }
+      return resMsg;
+
+
+    })
+    //获取每日游戏史
+  ctx.command('dailygamehistory', "获取每日游戏史")
+  .action(async (_) => {
+
+    const bdaily = dailygame.init(config);
+
+    let resMsg: string;
+
+    try {
+      let history = await dailygame.getdailygame(ctx);
+      let res = await dailygame.getdailygamenews(ctx);
+      const date = new Date().toLocaleDateString('zh-CN', {
+        month: 'long',
+        day: 'numeric'
+      });
+      resMsg = `游戏史上的${date}:\n\n${history}\n\n`;
+      
+      if (res.ret == '0'&&res.feeds.length>0) {
+        resMsg += `今日热点：\n`
+
+        for (let news of res.feeds) {            
+          resMsg += `${news.share.title}\n链接：${news.share.url}\n\n`;
+        }
+        const imageData = await ctx.http.get(res.feeds[0].acontent.split(',')[0], { responseType: 'arraybuffer' })
+        resMsg += `${koishi_1.segment.image(imageData)}`
+
+      }
+      else {
+        resMsg = "查询错误";
+        logger.error(`dailygame 查询错误 STATUSCODE:${res.ret}`);
+
+      }
+      //logger.error(resText);
+      //let res=JSON.parse(resText);
+
+    }
+    catch (e) {
+      logger.error("dailygame 消息解析错误");
+      logger.error(e);
+
+    }
+    return resMsg;
+
+
+  })
 }

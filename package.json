@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-xyq565861-nepweather",
   "description": "自用插件 提供查询城市日出日落信息功能",
-  "version": "0.0.6",
+  "version": "0.0.8",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "contributors": [                        
